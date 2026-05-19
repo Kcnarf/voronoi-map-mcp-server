@@ -41,13 +41,13 @@ function normalizePolygon(polygon) {
   return polygon;
 }
 
-server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a convex polygon based on weighted data points. Each cell's area represents the relative weight of its corresponding data point. If no shape is provided, defaults to a unit square.", {
+server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a convex polygon based on weighted data points. Each cell's area represents the relative weight of its corresponding data point. If no shape is provided, defaults to a unit square.\n\n**EXAMPLE:**\n\nInput:\n```json\n{\n  \"data\": [\n    { \"id\": \"A\", \"weight\": 30 },\n    { \"id\": \"B\", \"weight\": 70 }\n  ]\n}\n```\n\nOutput:\n```json\n[\n  {\n    \"polygon\": [[0,0], [0.3,0], [0.3,1], [0,1]],\n    \"datum\": { \"id\": \"A\", \"weight\": 30 }\n  },\n  {\n    \"polygon\": [[0.3,0], [1,0], [1,1], [0.3,1]],\n    \"datum\": { \"id\": \"B\", \"weight\": 70 }\n  }\n]\n```\n\nReturns array of cells with polygon coordinates (unit square by default) and original datum. Extra input properties are preserved in output.", {
   type: "object",
   required: ["data"],
   properties: {
     shape: {
       type: "array",
-      description: "Vertices of the convex, hole-free outer polygon as [[x,y], [x,y], ...]. Will be normalized to counterclockwise orientation. Defaults to a unit square [[0,0], [1,0], [1,1], [0,1]] if omitted.",
+      description: "Vertices of a convex, hole-free polygon as [[x,y], [x,y], ...]. Automatically normalized to counterclockwise orientation. Defaults to unit square [[0,0], [1,0], [1,1], [0,1]] if omitted. Coordinates can be in any coordinate system (pixels, normalized 0-1, abstract units, etc.). Minimum 3 vertices required for custom shapes. Examples:\n- Square: [[0,0], [100,0], [100,100], [0,100]]\n- Triangle: [[0,0], [10,5], [5,10]]\n- Pentagon: [[0,0], [2,0], [3,1.5], [1,3], [-1,1.5]]",
       items: {
         type: "array",
         items: { type: "number" },
@@ -57,7 +57,7 @@ server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a con
     },
     data: {
       type: "array",
-      description: "Array of data objects to partition. Each object must have a unique 'id' (string) and a positive numeric 'weight'. Additional properties are preserved in the output.",
+      description: "Array of data objects to partition into cells. Each object MUST have: 'id' (unique string identifier) and 'weight' (positive number representing relative cell area). Additional properties are preserved and returned in the output 'datum' field. The weight ratio determines how much space each cell occupies. Examples:\n- [{ id: \"A\", weight: 50 }, { id: \"B\", weight: 100 }] — B gets 2x the area of A\n- [{ id: \"region_1\", weight: 30, label: \"North\", color: \"#FF0000\" }, { id: \"region_2\", weight: 70, label: \"South\", color: \"#00FF00\" }] — extra properties preserved\n- [{ id: \"1\", weight: 25 }, { id: \"2\", weight: 25 }, { id: \"3\", weight: 25 }, { id: \"4\", weight: 25 }] — equal areas",
       items: {
         type: "object",
         required: ["id", "weight"],
@@ -70,24 +70,24 @@ server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a con
     },
     convergenceRatio: {
       type: "number",
-      description: "Convergence threshold for the simulation. The algorithm stops when the maximum distance any site moves between iterations falls below this ratio. Defaults to 0.01 if not provided.",
+      description: "Convergence threshold controlling simulation precision (default: 0.01, range: 0 < value ≤ 1). The algorithm stops when the maximum distance any site moves between iterations falls below this ratio of the shape's dimension. Smaller values produce more accurate results but take longer. Typical values:\n- 0.001 — very precise, 200+ iterations typical\n- 0.01 — standard accuracy, 50-100 iterations typical\n- 0.1 — coarse approximation, 10-20 iterations typical\n- Use smaller values for high-precision visualizations, larger values for performance.",
       exclusiveMinimum: 0,
       maximum: 1
     },
     maxIterationCount: {
       type: "number",
-      description: "Maximum number of iterations for the simulation. The algorithm stops when this limit is reached or convergence is achieved, whichever comes first. Defaults to 50 if not provided.",
+      description: "Maximum iterations before stopping regardless of convergence (default: 50). The algorithm stops when max iterations are reached OR convergence criteria are met, whichever comes first. Must be positive integer. Typical values:\n- 10-20 — fast, loose approximation\n- 50 — standard balance\n- 100-200 — high precision, more computation\n- 500+ — very high precision for critical visualizations\nNote: Actual iterations needed depends on convergenceRatio and data complexity.",
       exclusiveMinimum: 0
     },
     minWeightRatio: {
       type: "number",
-      description: "Minimum weight ratio for the simulation. Controls the termination criterion for Voronoi cell relative weight differences. Defaults to 0.01 if not provided.",
+      description: "Minimum weight ratio as a fraction of the maximum weight (default: 0.01, range: 0 < value ≤ 1). Sets a floor: any weight below (maxWeight * minWeightRatio) is clamped to that minimum. This prevents very small weights from causing flickering and computational instability during iteration. Examples:\n- weights [100, 50, 10] with minWeightRatio=0.01 → minimum allowed is 100*0.01=1, so 10 stays as 10\n- weights [100, 50, 1] with minWeightRatio=0.01 → minimum is 1, so 1 stays as 1\n- weights [100, 50, 0.5] with minWeightRatio=0.01 → minimum is 1, so 0.5 is clamped to 1\nTypical values:\n- 0.001 — allows very small cells (5% of max weight)\n- 0.01 — standard (1% of max weight)\n- 0.1 — filters out small cells (10% of max weight)\nUse larger values to suppress near-empty cells and reduce visual noise.",
       exclusiveMinimum: 0,
       maximum: 1
     },
     seed: {
       type: "string",
-      description: "Seed for reproducible results. Pass the same seed to get identical Voronoi map layouts across runs."
+      description: "Seed string for reproducible, deterministic results (optional). Pass the same seed to get identical Voronoi layouts across multiple runs. Useful for reproducible reports, testing, or maintaining consistent visualizations. Any string value is valid. Examples:\n- seed: \"run-2026-05-19\" — date-based seed\n- seed: \"map-version-1.0\" — version-based seed\n- seed: \"user-123-session\" — user-session-based seed\nOmit for random results each run."
     }
   }
 }, async (args) => {
