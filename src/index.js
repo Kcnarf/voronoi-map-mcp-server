@@ -1,13 +1,12 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { McpServer } from "@modelcontextprotocol/server";
+import { StdioServerTransport } from "@modelcontextprotocol/server/transport/stdio.js";
 import { voronoiMapSimulation } from "d3-voronoi-map";
 import { z } from "zod";
 
-const server = new Server(
-  { name: "voronoi-map-mcp-server", version: "1.0.0" },
-  { capabilities: { tools: {} } }
-);
+const server = new McpServer({
+  name: "voronoi-map-mcp-server",
+  version: "0.1.0"
+});
 
 // Zod schemas for input validation
 const CoordinatePair = z.tuple([z.number(), z.number()]);
@@ -37,57 +36,38 @@ function normalizePolygon(polygon) {
   return polygon;
 }
 
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "compute_voronoi_map",
-        description: "Computes a Voronoi map by partitioning a convex polygon based on weighted data points. Each cell's area represents the relative weight of its corresponding data point. If no shape is provided, defaults to a unit square.",
-        inputSchema: {
-          type: "object",
-          required: ["data"],
-          properties: {
-            shape: {
-              type: "array",
-              description: "Vertices of the convex, hole-free outer polygon as [[x,y], [x,y], ...]. Will be normalized to counterclockwise orientation. Defaults to a unit square [[0,0], [1,0], [1,1], [0,1]] if omitted.",
-              items: {
-                type: "array",
-                items: { type: "number" },
-                minItems: 2,
-                maxItems: 2
-              }
-            },
-            data: {
-              type: "array",
-              description: "Array of data objects to partition. Each object must have a unique 'id' (string) and a positive numeric 'weight'. Additional properties are preserved in the output.",
-              items: {
-                type: "object",
-                required: ["id", "weight"],
-                properties: {
-                  id: { type: "string" },
-                  weight: { type: "number", exclusiveMinimum: 0 }
-                },
-                additionalProperties: true
-              }
-            }
-          }
-        }
+server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a convex polygon based on weighted data points. Each cell's area represents the relative weight of its corresponding data point. If no shape is provided, defaults to a unit square.", {
+  type: "object",
+  required: ["data"],
+  properties: {
+    shape: {
+      type: "array",
+      description: "Vertices of the convex, hole-free outer polygon as [[x,y], [x,y], ...]. Will be normalized to counterclockwise orientation. Defaults to a unit square [[0,0], [1,0], [1,1], [0,1]] if omitted.",
+      items: {
+        type: "array",
+        items: { type: "number" },
+        minItems: 2,
+        maxItems: 2
       }
-    ]
-  };
-});
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.name !== "compute_voronoi_map") {
-    return {
-      content: [{ type: "text", text: `Unknown tool: ${request.params.name}` }],
-      isError: true
-    };
+    },
+    data: {
+      type: "array",
+      description: "Array of data objects to partition. Each object must have a unique 'id' (string) and a positive numeric 'weight'. Additional properties are preserved in the output.",
+      items: {
+        type: "object",
+        required: ["id", "weight"],
+        properties: {
+          id: { type: "string" },
+          weight: { type: "number", exclusiveMinimum: 0 }
+        },
+        additionalProperties: true
+      }
+    }
   }
-
+}, async (args) => {
   try {
     // Validate input with Zod
-    const validated = InputSchema.parse(request.params.arguments);
+    const validated = InputSchema.parse(args);
     const { shape, data } = validated;
 
     // Run simulation synchronously

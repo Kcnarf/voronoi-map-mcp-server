@@ -9,7 +9,7 @@
     "inspect:local": "npx @modelcontextprotocol/inspector node src/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/server": "^1.0.0",
     "d3-voronoi-map": "^2.1.1",
     "zod": "^3.22.4"
   }
