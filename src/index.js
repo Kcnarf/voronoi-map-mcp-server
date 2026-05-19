@@ -18,7 +18,10 @@ const DataItemSchema = z.object({
 
 const InputSchema = z.object({
   shape: z.array(CoordinatePair).min(3, "shape must have at least 3 vertices").optional(),
-  data: z.array(DataItemSchema).min(1, "data array must not be empty")
+  data: z.array(DataItemSchema).min(1, "data array must not be empty"),
+  convergenceRatio: z.number().positive().max(1).optional(),
+  maxIterationCount: z.number().positive().int().optional(),
+  minWeightRatio: z.number().positive().max(1).optional()
 });
 
 // Normalize polygon to counterclockwise orientation using shoelace formula
@@ -62,13 +65,30 @@ server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a con
         },
         additionalProperties: true
       }
+    },
+    convergenceRatio: {
+      type: "number",
+      description: "Convergence threshold for the simulation. The algorithm stops when the maximum distance any site moves between iterations falls below this ratio. Defaults to 0.01 if not provided.",
+      exclusiveMinimum: 0,
+      maximum: 1
+    },
+    maxIterationCount: {
+      type: "number",
+      description: "Maximum number of iterations for the simulation. The algorithm stops when this limit is reached or convergence is achieved, whichever comes first. Defaults to 50 if not provided.",
+      exclusiveMinimum: 0
+    },
+    minWeightRatio: {
+      type: "number",
+      description: "Minimum weight ratio for the simulation. Controls the termination criterion for Voronoi cell relative weight differences. Defaults to 0.01 if not provided.",
+      exclusiveMinimum: 0,
+      maximum: 1
     }
   }
 }, async (args) => {
   try {
     // Validate input with Zod
     const validated = InputSchema.parse(args);
-    const { shape, data } = validated;
+    const { shape, data, convergenceRatio, maxIterationCount, minWeightRatio } = validated;
 
     // Run simulation synchronously
     let simulation = voronoiMapSimulation(data);
@@ -77,6 +97,21 @@ server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a con
     if (shape !== undefined) {
       const normalizedShape = normalizePolygon(shape);
       simulation = simulation.clip(normalizedShape);
+    }
+
+    // Only set convergenceRatio if explicitly provided
+    if (convergenceRatio !== undefined) {
+      simulation = simulation.convergenceRatio(convergenceRatio);
+    }
+
+    // Only set maxIterationCount if explicitly provided
+    if (maxIterationCount !== undefined) {
+      simulation = simulation.maxIterationCount(maxIterationCount);
+    }
+
+    // Only set minWeightRatio if explicitly provided
+    if (minWeightRatio !== undefined) {
+      simulation = simulation.minWeightRatio(minWeightRatio);
     }
 
     simulation = simulation.stop();
