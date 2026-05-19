@@ -10,13 +10,15 @@ Because a picture is worth a thousand words:
 ![circle](./img/circle.png)
 ![simulation](./img/simulation.gif)
 
+Note : all the examples above use the same data set, only the countour shape differs.
+
 ## Context
 
 This MCP server encapsulates the [d3-voronoi-map](https://github.com/Kcnarf/d3-voronoi-map) package, making it accessible to LLMs.
 
 This MCP server allows to compute a map with a unique look-and-feel, where inner areas are not strictly aligned each others, and where the outer shape can be any hole-free convex polygons (square, rectangle, pentagon, hexagon, ... any regular convex polygon, and also any non regular hole-free convex polygon).
 
-The computation of the Voronoï map is based on a iteration/looping process, until stabilization. Hence, obtaining the final partition requires _some iterations_/_some times_, depending on the number and type of data/weights, the desired representativeness of cell areas.
+The computation of the Voronoï map is based on a iteration/looping process, until stabilization (cf. the animation of the fifth example above). Hence, obtaining the final partition requires _some iterations_/_some times_, depending on the number and type of data/weights, the desired representativeness of cell areas.
 
 You can go to the [d3-voronoi-map](https://github.com/Kcnarf/d3-voronoi-map) repository for more details, some real life use cases, and more.
 

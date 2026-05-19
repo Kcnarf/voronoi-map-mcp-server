@@ -18,7 +18,7 @@ const DataItemSchema = z.object({
 }).passthrough();
 
 const InputSchema = z.object({
-  shape: z.array(CoordinatePair).min(3, "shape must have at least 3 vertices"),
+  shape: z.array(CoordinatePair).min(3, "shape must have at least 3 vertices").optional(),
   data: z.array(DataItemSchema).min(1, "data array must not be empty")
 });
 
@@ -42,14 +42,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "compute_voronoi_map",
-        description: "Computes a Voronoi map by partitioning a convex polygon based on weighted data points. Each cell's area represents the relative weight of its corresponding data point.",
+        description: "Computes a Voronoi map by partitioning a convex polygon based on weighted data points. Each cell's area represents the relative weight of its corresponding data point. If no shape is provided, defaults to a unit square.",
         inputSchema: {
           type: "object",
-          required: ["shape", "data"],
+          required: ["data"],
           properties: {
             shape: {
               type: "array",
-              description: "Vertices of the convex, hole-free outer polygon as [[x,y], [x,y], ...]. Will be normalized to counterclockwise orientation.",
+              description: "Vertices of the convex, hole-free outer polygon as [[x,y], [x,y], ...]. Will be normalized to counterclockwise orientation. Defaults to a unit square [[0,0], [1,0], [1,1], [0,1]] if omitted.",
               items: {
                 type: "array",
                 items: { type: "number" },
@@ -90,13 +90,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const validated = InputSchema.parse(request.params.arguments);
     const { shape, data } = validated;
 
-    // Normalize polygon to counterclockwise orientation
-    const normalizedShape = normalizePolygon(shape);
-
     // Run simulation synchronously
-    const simulation = voronoiMapSimulation(data)
-      .clip(normalizedShape)
-      .stop();
+    let simulation = voronoiMapSimulation(data);
+
+    // Only call .clip() if shape was explicitly provided
+    if (shape !== undefined) {
+      const normalizedShape = normalizePolygon(shape);
+      simulation = simulation.clip(normalizedShape);
+    }
+
+    simulation = simulation.stop();
 
     // Iterate until convergence or max iterations reached
     while (!simulation.state().ended) {
