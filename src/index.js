@@ -1,7 +1,8 @@
-import { McpServer } from "@modelcontextprotocol/server";
-import { StdioServerTransport } from "@modelcontextprotocol/server/transport/stdio.js";
+import { McpServer } from "@modelcontextprotocol/sdk";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/transport/stdio.js";
 import { voronoiMapSimulation } from "d3-voronoi-map";
 import { z } from "zod";
+import seedrandom from "seedrandom";
 
 const server = new McpServer({
   name: "voronoi-map-mcp-server",
@@ -21,7 +22,8 @@ const InputSchema = z.object({
   data: z.array(DataItemSchema).min(1, "data array must not be empty"),
   convergenceRatio: z.number().positive().max(1).optional(),
   maxIterationCount: z.number().positive().int().optional(),
-  minWeightRatio: z.number().positive().max(1).optional()
+  minWeightRatio: z.number().positive().max(1).optional(),
+  seed: z.string().optional()
 });
 
 // Normalize polygon to counterclockwise orientation using shoelace formula
@@ -82,13 +84,17 @@ server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a con
       description: "Minimum weight ratio for the simulation. Controls the termination criterion for Voronoi cell relative weight differences. Defaults to 0.01 if not provided.",
       exclusiveMinimum: 0,
       maximum: 1
+    },
+    seed: {
+      type: "string",
+      description: "Seed for reproducible results. Pass the same seed to get identical Voronoi map layouts across runs."
     }
   }
 }, async (args) => {
   try {
     // Validate input with Zod
     const validated = InputSchema.parse(args);
-    const { shape, data, convergenceRatio, maxIterationCount, minWeightRatio } = validated;
+    const { shape, data, convergenceRatio, maxIterationCount, minWeightRatio, seed } = validated;
 
     // Run simulation synchronously
     let simulation = voronoiMapSimulation(data);
@@ -112,6 +118,11 @@ server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a con
     // Only set minWeightRatio if explicitly provided
     if (minWeightRatio !== undefined) {
       simulation = simulation.minWeightRatio(minWeightRatio);
+    }
+
+    // Only set prng if seed is explicitly provided
+    if (seed !== undefined) {
+      simulation = simulation.prng(seedrandom(seed));
     }
 
     simulation = simulation.stop();

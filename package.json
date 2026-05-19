@@ -9,8 +9,9 @@
     "inspect:local": "npx @modelcontextprotocol/inspector node src/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "d3-voronoi-map": "^2.1.1",
+    "seedrandom": "^3.0.5",
     "zod": "^3.22.4"
   }
 }
