@@ -26,6 +26,11 @@ const InputSchema = z.object({
   minWeightRatio: z.number().positive().max(1).optional().describe("Minimum weight ratio as a fraction of the maximum weight (default: 0.01, range: 0 < value ≤ 1). Sets a floor: any weight below (maxWeight * minWeightRatio) is clamped to that minimum. This prevents very small weights from causing flickering and computational instability during iteration. Examples:\n- weights [100, 50, 10] with minWeightRatio=0.01 → minimum allowed is 100*0.01=1, so 10 stays as 10\n- weights [100, 50, 1] with minWeightRatio=0.01 → minimum is 1, so 1 stays as 1\n- weights [100, 50, 0.5] with minWeightRatio=0.01 → minimum is 1, so 0.5 is clamped to 1\nTypical values:\n- 0.001 — allows very small cells (5% of max weight)\n- 0.01 — standard (1% of max weight)\n- 0.1 — filters out small cells (10% of max weight)\nUse larger values to suppress near-empty cells and reduce visual noise.")
 });
 
+const OutputSchema = z.array(z.object({
+  polygon: z.array(CoordinatePair).describe("Array of [x,y] coordinates defining the vertices of the Voronoi cell polygon"),
+  datum: z.record(z.any()).describe("Original data object from input with all properties preserved (id, weight, and any custom fields)")
+}).describe("Voronoi cell with polygon coordinates and original datum"));
+
 // Normalize polygon to counterclockwise orientation using shoelace formula
 function normalizePolygon(polygon) {
   let area = 0;
@@ -42,7 +47,8 @@ function normalizePolygon(polygon) {
 }
 
 server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a convex polygon based on weighted data points. Each cell's area represents the relative weight of its corresponding data point. If no shape is provided, defaults to a unit square.\n\n**EXAMPLE:**\n\nInput:\n```json\n{\n  \"data\": [\n    { \"id\": \"A\", \"weight\": 30 },\n    { \"id\": \"B\", \"weight\": 70 }\n  ]\n}\n```\n\nOutput:\n```json\n[\n  {\n    \"polygon\": [[0,0], [0.3,0], [0.3,1], [0,1]],\n    \"datum\": { \"id\": \"A\", \"weight\": 30 }\n  },\n  {\n    \"polygon\": [[0.3,0], [1,0], [1,1], [0.3,1]],\n    \"datum\": { \"id\": \"B\", \"weight\": 70 }\n  }\n]\n```\n\nReturns array of cells with polygon coordinates (unit square by default) and original datum. Extra input properties are preserved in output.", {
-  input: InputSchema
+  input: InputSchema,
+  output: OutputSchema
 }, async (args) => {
   try {
     // Validate input with Zod
