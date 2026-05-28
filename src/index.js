@@ -19,7 +19,7 @@ const DataItemSchema = z.object({
 }).passthrough();
 
 const InputSchema = z.object({
-  data: z.array(DataItemSchema).min(1, "data array must not be empty").describe("Array of data objects to partition into cells. Each object MUST have: 'id' (unique string identifier) and 'weight' (positive number representing relative cell area). Additional properties are preserved and returned in the output 'datum' field. The weight ratio determines how much space each cell occupies. Examples:\n- [{ id: \"A\", weight: 50 }, { id: \"B\", weight: 100 }] — B gets 2x the area of A\n- [{ id: \"region_1\", weight: 30, label: \"North\", color: \"#FF0000\" }, { id: \"region_2\", weight: 70, label: \"South\", color: \"#00FF00\" }] — extra properties preserved\n- [{ id: \"1\", weight: 25 }, { id: \"2\", weight: 25 }, { id: \"3\", weight: 25 }, { id: \"4\", weight: 25 }] — equal areas"),
+  data: z.array(DataItemSchema).min(1, "data array must not be empty").describe("Array of data objects to partition into cells. Each object MUST have: 'id' (unique string identifier) and 'weight' (positive number representing relative cell area). Additional properties are preserved and returned in the output 'datum' field. The weight ratio determines how much space each cell occupies. Examples:\n- [{ id: \"A\", weight: 50 }, { id: \"B\", weight: 50 }, { id: \"C\", weight: 100 }] — A and B gets the equal areas, C gets 2x area of A or B\n- [{ id: \"region_1\", weight: 30, label: \"North\", color: \"#FF0000\" }, { id: \"region_2\", weight: 70, label: \"South\", color: \"#00FF00\" }] — extra properties preserved in results"),
   shape: z.array(CoordinatePair).min(3, "shape must have at least 3 vertices").optional().describe("Vertices of a convex polygon (hull) as [[x,y], [x,y], ...]. Non-convex shapes are automatically transformed into their convex hull. Defaults to unit square [[0,0], [1,0], [1,1], [0,1]] if omitted. Coordinates can be in any coordinate system (pixels, normalized 0-1, abstract units, etc.). Output polygon coordinates are returned in the same coordinate system as this input shape. Minimum 3 non-collinear vertices required. Examples:\n- Square: [[0,0], [100,0], [100,100], [0,100]]\n- Triangle: [[0,0], [10,5], [5,10]]\n- Pentagon: [[0,0], [2,0], [3,1.5], [1,3], [-1,1.5]]"),
   seed: z.string().optional().describe("Seed string for reproducible, deterministic results (optional). Pass the same seed to get identical Voronoi layouts across multiple runs. Useful for reproducible reports, testing, or maintaining consistent visualizations. Any string value is valid. Examples:\n- seed: \"run-2026-05-19\" — date-based seed\n- seed: \"map-version-1.0\" — version-based seed\n- seed: \"user-123-session\" — user-session-based seed\nOmit for random results each run."),
   maxIterationCount: z.number().positive().int().optional().describe("Maximum iterations before stopping regardless of convergence (default: 50). The algorithm stops when max iterations are reached OR convergence criteria are met, whichever comes first. Must be positive integer. Typical values:\n- 10-20 — fast, loose approximation\n- 50 — standard balance\n- 100-200 — high precision, more computation\n- 500+ — very high precision for critical visualizations\nNote: Actual iterations needed depends on convergenceRatio and data complexity."),
@@ -36,7 +36,7 @@ const OutputSchema = z.array(z.object({
 function computeConvexHull(polygon) {
   const convexhull = polygonHull(polygon);
   if (convexhull.length < 3) {
-    throw new Error('Shape defines a degenerated polygon with  less than 3 non-duplicate points');
+    throw new Error('Shape defines a degenerated polygon with less than 3 non-duplicate points');
   }
 
   // Validate that the hull encloses a valid area using shoelace formula
@@ -48,13 +48,13 @@ function computeConvexHull(polygon) {
   }
 
   if (area === 0) {
-    throw new Error('Shape defines a degenerate polygon with zero area (e.g., collinear points)');
+    throw new Error('Shape defines a degenerate polygon with zero area (e.g., with collinear points)');
   }
 
   return convexhull;
 }
 
-server.tool("compute_voronoi_map", "Computes a Voronoi map by partitioning a convex polygon based on weighted data points. Each cell's area represents the relative weight of its corresponding data point. If no shape is provided, defaults to a unit square.\n\n**tags:*** visualization, part-to-whole, voronoi\n\n**EXAMPLE:**\n\nInput:\n```json\n{\n  \"data\": [\n    { \"id\": \"A\", \"weight\": 30 },\n    { \"id\": \"B\", \"weight\": 70 }\n  ]\n}\n```\n\nOutput:\n```json\n[\n  {\n    \"polygon\": [[0,0], [0.3,0], [0.3,1], [0,1]],\n    \"datum\": { \"id\": \"A\", \"weight\": 30 }\n  },\n  {\n    \"polygon\": [[0.3,0], [1,0], [1,1], [0.3,1]],\n    \"datum\": { \"id\": \"B\", \"weight\": 70 }\n  }\n]\n```\n\nReturns array of cells with polygon coordinates (unit square by default) and original datum. Extra input properties are preserved in output.", {
+server.tool("compute_voronoi_map", "**tags:** visualization, part-to-whole, voronoi\n\n**description:**\n\nComputes a Voronoi map by partitioning a convex shape based on weighted data points. Each cell's area represents the relative weight of its corresponding data point. If no shape is provided, defaults to a unit square.\n\nReturns array of cells with polygon coordinates (unit square by default) and original datum. Extra input properties are preserved in output.\n\n**EXAMPLE:**\n\nInput:\n```json\n{\n  \"data\": [\n    { \"id\": \"A\", \"weight\": 70, \"label\": \"Category A\" },\n    { \"id\": \"Others\", \"weight\": 30 }\n  ]\n}\n```\n\nOutput:\n```json\n[\n  {\n    \"polygon\": [[0.3,0], [1,0], [1,1], [0.3,1]],\n    \"datum\": { \"id\": \"A\", \"weight\": 70, \"label\": \"Category A\" }\n  },\n  {\n    \"polygon\": [[0,0], [0.3,0], [0.3,1], [0,1]],\n    \"datum\": { \"id\": \"Others\", \"weight\": 30 }\n  }\n]\n```", {
   input: InputSchema,
   output: OutputSchema
 }, async (args) => {
