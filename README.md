@@ -64,6 +64,24 @@ You can go to the [d3-voronoi-map](https://github.com/Kcnarf/d3-voronoi-map) rep
 
 5. **Verify** — The `compute_voronoi_map` tool should now be available in Claude. You can test it by asking Claude to compute a Voronoi map.
 
+## Testing
+
+The project includes a comprehensive test suite covering the server's computation logic, parameter handling, and error formatting.
+
+### Run tests
+```bash
+yarn test
+```
+
+This executes 41 tests organized into functional groups:
+- **Datum extraction** — verifies data preservation through d3 internals
+- **Seed determinism** — ensures reproducible results with seeded PRNG
+- **Parameter application** — validates conditional application of optional parameters (shape, maxIterationCount, minWeightRatio, convergenceRatio)
+- **Hull error handling** — tests degenerate polygon detection
+- **Success responses** — verifies correct MCP response format
+- **Zod validation** — tests input validation and error messages
+- **Runtime errors** — ensures proper error prefixes and formatting
+
 ## Usage
 **step 1**: the LLM sends two pieces of information:
 * the outer shape,

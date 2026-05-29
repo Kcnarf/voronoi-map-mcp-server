@@ -12,18 +12,23 @@ The server communicates via stdio and is intended to run inside Claude Desktop.
 
 **Language**: JavaScript (Node.js)  
 **Module system**: ESM  
-**Single-file server**: `src/index.js` contains the complete MCP server implementation
+
+**Source files**:
+- `src/index.js` — MCP entry point, starts stdio transport
+- `src/server.js` — Server factory (`createServer()`) and tool handler (`handleComputeVoronoiMap()`)
+- `src/compute.js` — Pure computation logic (`computeVoronoiMap()`)
 
 **Tool**: `compute_voronoi_map`
-- **Input**: `shape` (array of [x,y] coordinates defining a convex polygon) and `data` (array of objects with `id` and `weight`)
+- **Input**: `data` (required, array of objects with `id` and `weight`); `shape` (optional, array of [x,y] coordinates); optional tuning parameters (`seed`, `maxIterationCount`, `convergenceRatio`, `minWeightRatio`)
 - **Output**: Array of `{polygon: [[x,y], ...], datum: {...}}` objects representing the tessellation
-- **Behavior**: The server automatically normalizes the input polygon to counterclockwise orientation and runs the Voronoi simulation synchronously until convergence
+- **Behavior**: Optionally computes convex hull of input polygon, runs Voronoi simulation synchronously until convergence, preserves extra fields from input data
 
 ## Common Commands
 
 ```bash
-yarn install            # Install @modelcontextprotocol/sdk and d3-voronoi-map
+yarn install            # Install dependencies
 yarn start              # Run the MCP server on stdio
+yarn test               # Run test suite (41 tests, organized by functionality)
 ```
 
 ## Integration with Claude Desktop
@@ -45,13 +50,39 @@ Then reload Claude Desktop to see the `compute_voronoi_map` tool available.
 
 ## Implementation Details
 
-- **Polygon normalization**: Uses shoelace formula to detect clockwise orientation and reverses if needed
-- **Synchronous execution**: Calls `.stop()` on the simulation and manually iterates with `.tick()` until `state().ended` is true
-- **Output cleaning**: Strips d3-voronoi-map internal properties (`.site`) and returns only the user-provided datum and the cell polygon coordinates
+**Polygon handling** (`src/compute.js`):
+- Computes convex hull via `d3-polygon`'s `polygonHull()` if shape is provided
+- Validates hull has ≥3 non-duplicate points via shoelace formula area check
+- Only applies `.clip()` to simulation if shape is explicitly provided
+
+**Conditional parameter application**:
+- Parameters only applied to simulation if explicitly provided (`if (x !== undefined)`)
+- Allows d3-voronoi-map defaults to be used when parameters omitted
+- Each parameter has its own conditional: `shape`, `seed`, `maxIterationCount`, `convergenceRatio`, `minWeightRatio`
+
+**Synchronous execution** (`src/compute.js`):
+- Calls `.stop()` to prevent auto-running, then manually iterates with `.tick()`
+- Stops when `state().ended` is true (convergence or maxIterationCount reached)
+
+**Datum extraction** (`src/compute.js`):
+- Extracts original data via `polygon.site.originalObject.data.originalData`
+- Preserves all input fields including passthrough fields (via Zod `.passthrough()`)
+- Weight in datum is original value, not internally clamped value
+
+## Testing
+
+The project includes 41 regression tests organized by functionality:
+- **Datum extraction** — verifies data preservation through d3 internals
+- **Seed determinism** — ensures reproducible results with seedrandom
+- **Parameter application** — validates each optional parameter is applied when provided
+- **Hull error handling** — tests degenerate polygon detection
+- **MCP layer** — success responses, Zod validation, error formatting
+
+See README.md for test execution instructions.
 
 ## Future Enhancements
 
-- Add `options` parameter for simulation tuning (convergenceRatio, maxIterationCount, minWeightRatio)
-- Add convergence metadata to response (iterationCount, convergenceRatio)
-- Input validation for convexity checks
-- Support for seeded random number generation for reproducibility
+- ✅ Seeded random number generation for reproducibility (already implemented via `seed` parameter)
+- ✅ Simulation tuning parameters (already implemented: `convergenceRatio`, `maxIterationCount`, `minWeightRatio`)
+- ⚠️ Convergence metadata to response (iterationCount, final convergenceRatio achieved)
+- ⚠️ Input validation for convexity checks (currently only errors on degenerate shapes)
