@@ -1,8 +1,25 @@
 import test from 'tape';
+import sinon from 'sinon';
 import { computeVoronoiMap } from '../src/compute.js';
 
+// Helper to create mock simulation for testing parameter passing
+function createMockSimulation() {
+  return {
+    clip: sinon.stub().returnsThis(),
+    convergenceRatio: sinon.stub().returnsThis(),
+    maxIterationCount: sinon.stub().returnsThis(),
+    minWeightRatio: sinon.stub().returnsThis(),
+    prng: sinon.stub().returnsThis(),
+    stop: sinon.stub().returnsThis(),
+    state: sinon.stub().returns({
+      ended: true,
+      polygons: []
+    })
+  };
+}
+
 test('Datum extraction', (t) => {
-  t.test('id and weight match original input', (t) => {
+  t.test('should match original input for id and weight', (t) => {
     const inputData = [
       { id: 'alpha', weight: 42 },
       { id: 'beta', weight: 7 }
@@ -22,7 +39,7 @@ test('Datum extraction', (t) => {
     t.end();
   });
 
-  t.test('passthrough fields preserved in datum', (t) => {
+  t.test('should preserve passthrough fields in datum', (t) => {
     const result = computeVoronoiMap({
       data: [{
         id: 'x',
@@ -41,7 +58,7 @@ test('Datum extraction', (t) => {
     t.end();
   });
 
-  t.test('weight is original value, not internally clamped', (t) => {
+  t.test('should preserve weight as original value, not internally clamped', (t) => {
     const result = computeVoronoiMap({
       data: [
         { id: 'big', weight: 100 },
@@ -58,7 +75,7 @@ test('Datum extraction', (t) => {
 });
 
 test('Seed determinism', (t) => {
-  t.test('same seed produces identical output on two calls', (t) => {
+  t.test('should produce identical output across multiple calls with same seed', (t) => {
     const args = {
       data: [
         { id: 'a', weight: 1 },
@@ -67,16 +84,19 @@ test('Seed determinism', (t) => {
       seed: 'determinism-test'
     };
 
-    const result1 = computeVoronoiMap(args);
-    const result2 = computeVoronoiMap(args);
+    const results = [
+      JSON.stringify(computeVoronoiMap(args)),
+      JSON.stringify(computeVoronoiMap(args)),
+      JSON.stringify(computeVoronoiMap(args)),
+      JSON.stringify(computeVoronoiMap(args))
+    ];
 
-    const json1 = JSON.stringify(result1);
-    const json2 = JSON.stringify(result2);
-    t.equal(json1, json2, 'same seed produces identical output');
+    const allIdentical = results.every(json => json === results[0]);
+    t.ok(allIdentical, 'same seed produces identical output across 4+ calls');
     t.end();
   });
 
-  t.test('different seeds produce different output', (t) => {
+  t.test('should produce different output with different seeds', (t) => {
     const data = [
       { id: 'a', weight: 1 },
       { id: 'b', weight: 2 }
@@ -90,134 +110,205 @@ test('Seed determinism', (t) => {
     t.notEqual(json1, json2, 'different seeds produce different output');
     t.end();
   });
+
+  t.test('should be deterministic with empty string seed', (t) => {
+    const args = {
+      data: [
+        { id: 'a', weight: 1 },
+        { id: 'b', weight: 2 }
+      ],
+      seed: ''
+    };
+
+    const result1 = computeVoronoiMap(args);
+    const result2 = computeVoronoiMap(args);
+
+    const json1 = JSON.stringify(result1);
+    const json2 = JSON.stringify(result2);
+    t.equal(json1, json2, 'empty string seed produces identical output on two calls');
+    t.end();
+  });
+
+  t.test('should not call .seed() when omitted', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
+
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }] }, mockSimulationStub);
+
+    t.notOk(mockSimulation.prng.called,
+      '.prng() not called when seed parameter omitted');
+
+    t.end();
+  });
 });
 
-test('Parameter application', (t) => {
-  t.test('shape parameter changes output', (t) => {
-    const data = [
-      { id: 'a', weight: 1 },
-      { id: 'b', weight: 1 }
-    ];
+test('shape parameter', (t) => {
+  t.test('should call .clip() with convex hull', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
 
-    const resultDefault = computeVoronoiMap({
-      data,
-      seed: 'test'
-    });
+    const shape = [[0, 0], [100, 0], [100, 100], [0, 100]];
+    const data = [{ id: 'a', weight: 1 }];
 
-    const resultCustom = computeVoronoiMap({
-      data,
-      shape: [[0, 0], [100, 0], [100, 100], [0, 100]],
-      seed: 'test'
-    });
+    computeVoronoiMap({ data, shape, seed: 'test' }, mockSimulationStub);
 
-    const json1 = JSON.stringify(resultDefault);
-    const json2 = JSON.stringify(resultCustom);
-    t.notEqual(json1, json2, 'providing shape produces different output than omitting it');
+    t.ok(mockSimulation.clip.calledOnce, '.clip() called once');
+    const clipArg = mockSimulation.clip.firstCall.args[0];
+    t.equal(clipArg.length, 4, 'convex hull has 4 points');
+    t.ok(Array.isArray(clipArg) && clipArg.every(p => Array.isArray(p) && p.length === 2),
+      'clip called with array of [x,y] coordinates');
+
     t.end();
   });
 
-  t.test('maxIterationCount parameter changes output', (t) => {
-    const data = [
-      { id: 'a', weight: 1 },
-      { id: 'b', weight: 1 }
-    ];
+  t.test('should not call .clip() when shape omitted', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
 
-    const resultDefault = computeVoronoiMap({
-      data,
-      seed: 'test'
-    });
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], seed: 'test' }, mockSimulationStub);
 
-    const resultOneIter = computeVoronoiMap({
-      data,
-      maxIterationCount: 1,
-      seed: 'test'
-    });
+    t.notOk(mockSimulation.clip.called, '.clip() not called when shape omitted');
 
-    const json1 = JSON.stringify(resultDefault);
-    const json2 = JSON.stringify(resultOneIter);
-    t.notEqual(json1, json2, 'maxIterationCount:1 produces different output than default 50');
+    t.end();
+  });
+});
+
+test('maxIterationCount parameter', (t) => {
+  t.test('should call .maxIterationCount() with correct value', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
+
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], maxIterationCount: 5, seed: 'test' }, mockSimulationStub);
+
+    t.ok(mockSimulation.maxIterationCount.calledOnceWithExactly(5),
+      '.maxIterationCount() called with value 5');
+
     t.end();
   });
 
-  t.test('minWeightRatio parameter changes output (clamping effect)', (t) => {
-    const data = [
-      { id: 'a', weight: 100 },
-      { id: 'b', weight: 10 },
-      { id: 'c', weight: 1 }
-    ];
+  t.test('should not call .maxIterationCount() when maxIterationCount omitted', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
 
-    const resultDefault = computeVoronoiMap({
-      data,
-      seed: 'test'
-    });
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], seed: 'test' }, mockSimulationStub);
 
-    const resultClamped = computeVoronoiMap({
-      data,
-      minWeightRatio: 1,
-      seed: 'test'
-    });
+    t.notOk(mockSimulation.maxIterationCount.called,
+      '.maxIterationCount() not called when parameter omitted');
 
-    const json1 = JSON.stringify(resultDefault);
-    const json2 = JSON.stringify(resultClamped);
-    t.notEqual(json1, json2, 'minWeightRatio:1 produces dramatically different output (equal areas) vs default');
+    t.end();
+  });
+});
 
-    const defaultB = resultDefault.find(c => c.datum.id === 'b');
-    const clampedB = resultClamped.find(c => c.datum.id === 'b');
+test('minWeightRatio parameter', (t) => {
+  t.test('should call .minWeightRatio() with correct value', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
 
-    t.ok(defaultB && clampedB, 'both results have cell b');
-    t.notEqual(JSON.stringify(defaultB.polygon), JSON.stringify(clampedB.polygon),
-      'cell b polygon differs significantly with minWeightRatio:1');
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], minWeightRatio: 0.5, seed: 'test' }, mockSimulationStub);
+
+    t.ok(mockSimulation.minWeightRatio.calledOnceWithExactly(0.5),
+      '.minWeightRatio() called with value 0.5');
+
     t.end();
   });
 
-  t.test('convergenceRatio parameter changes output', (t) => {
-    const data = [
-      { id: 'a', weight: 1 },
-      { id: 'b', weight: 2 }
-    ];
+  t.test('should not call .minWeightRatio() when minWeightRatio omitted', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
 
-    const resultDefault = computeVoronoiMap({
-      data,
-      seed: 'test'
-    });
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], seed: 'test' }, mockSimulationStub);
 
-    const resultLoose = computeVoronoiMap({
-      data,
-      convergenceRatio: 1,
-      seed: 'test'
-    });
+    t.notOk(mockSimulation.minWeightRatio.called,
+      '.minWeightRatio() not called when parameter omitted');
 
-    const json1 = JSON.stringify(resultDefault);
-    const json2 = JSON.stringify(resultLoose);
-    t.notEqual(json1, json2, 'convergenceRatio:1 (loose) produces different output than default (tight 0.01)');
+    t.end();
+  });
+});
+
+test('convergenceRatio parameter', (t) => {
+  t.test('should call .convergenceRatio() with correct value', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
+
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], convergenceRatio: 0.001, seed: 'test' }, mockSimulationStub);
+
+    t.ok(mockSimulation.convergenceRatio.calledOnceWithExactly(0.001),
+      '.convergenceRatio() called with value 0.001');
+
+    t.end();
+  });
+
+  t.test('should not call .convergenceRatio() when convergenceRatio omitted', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
+
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], seed: 'test' }, mockSimulationStub);
+
+    t.notOk(mockSimulation.convergenceRatio.called,
+      '.convergenceRatio() not called when parameter omitted');
+
     t.end();
   });
 });
 
 test('Hull error handling', (t) => {
-  t.test('collinear shape throws degenerate polygon error', (t) => {
-    try {
-      computeVoronoiMap({
-        data: [{ id: 'a', weight: 1 }],
-        shape: [[0, 0], [1, 1], [2, 2]]
-      });
-      t.fail('should have thrown an error');
-    } catch (error) {
-      t.ok(error.message.includes('less than 3') || error.message.includes('zero area'), 'error mentions degenerate polygon');
-      t.end();
-    }
+  t.test('Should handle duplicated points', (t) => {
+    t.test('should throw error if duplicate-free polygon has <3 points', (t) => {
+      try {
+        computeVoronoiMap({
+          data: [{ id: 'a', weight: 1 }],
+          shape: [[5, 5], [5, 5], [5, 5]]
+        });
+        t.fail('should have thrown an error');
+      } catch (error) {
+        t.ok(error.message.includes('less than 3 non-duplicate'), 'error message mentions non-duplicate');
+        t.end();
+      }
+    });
+
+    t.test('should not throw error if duplicate-free polygon has >=3 points', (t) => {
+      try {
+        const result = computeVoronoiMap({
+          data: [{ id: 'a', weight: 1 }],
+          shape: [[0, 0], [0, 0], [1, 0], [0, 1]]
+        });
+        t.ok(Array.isArray(result), 'result is an array (no error thrown)');
+        t.equal(result.length, 1, 'result has 1 cell');
+        t.end();
+      } catch (error) {
+        t.fail(`should not have thrown an error: ${error.message}`);
+        t.end();
+      }
+    });
   });
 
-  t.test('duplicate points shape throws error', (t) => {
-    try {
-      computeVoronoiMap({
-        data: [{ id: 'a', weight: 1 }],
-        shape: [[5, 5], [5, 5], [5, 5]]
-      });
-      t.fail('should have thrown an error');
-    } catch (error) {
-      t.ok(error.message.includes('less than 3 non-duplicate'), 'error message mentions non-duplicate');
-      t.end();
-    }
+  t.test('Should handle collinear vertices', (t) => {
+    t.test('should throw degenerate polygon error for collinear 0-area shape', (t) => {
+      try {
+        computeVoronoiMap({
+          data: [{ id: 'a', weight: 1 }],
+          shape: [[0, 0], [1, 1], [2, 2]]
+        });
+        t.fail('should have thrown an error');
+      } catch (error) {
+        t.ok(error.message.includes('less than 3') || error.message.includes('zero area'), 'error mentions degenerate polygon');
+        t.end();
+      }
+    });
+
+    t.test('should not throw error if some vertices are collinear but shape still define valid area', (t) => {
+      try {
+        const result = computeVoronoiMap({
+          data: [{ id: 'a', weight: 1 }],
+          shape: [[0, 0], [1, 0], [1.5, 0], [2, 0], [2, 2], [0, 2]]
+        });
+        t.ok(Array.isArray(result), 'result is an array (no error thrown)');
+        t.equal(result.length, 1, 'result has 1 cell');
+        t.end();
+      } catch (error) {
+        t.fail(`should not have thrown an error: ${error.message}`);
+        t.end();
+      }
+    });
   });
 });

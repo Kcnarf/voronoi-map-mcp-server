@@ -24,9 +24,9 @@ function computeConvexHull(polygon) {
   return convexhull;
 }
 
-export function computeVoronoiMap({ shape, data, convergenceRatio, maxIterationCount, minWeightRatio, seed }) {
+export function computeVoronoiMap({ shape, data, convergenceRatio, maxIterationCount, minWeightRatio, seed }, _simulationFactory = voronoiMapSimulation) {
   // Run simulation synchronously
-  let simulation = voronoiMapSimulation(data);
+  let simulation = _simulationFactory(data);
 
   // Only call .clip() if shape was explicitly provided
   if (shape !== undefined) {
