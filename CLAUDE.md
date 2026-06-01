@@ -71,14 +71,47 @@ Then reload Claude Desktop to see the `compute_voronoi_map` tool available.
 
 ## Testing
 
-The project includes 41 regression tests organized by functionality:
+The project includes 49 regression tests organized by functionality:
 - **Datum extraction** — verifies data preservation through d3 internals
 - **Seed determinism** — ensures reproducible results with seedrandom
-- **Parameter application** — validates each optional parameter is applied when provided
-- **Hull error handling** — tests degenerate polygon detection
-- **MCP layer** — success responses, Zod validation, error formatting
+- **Parameter tests** — validates each optional parameter (seed, shape, maxIterationCount, minWeightRatio, convergenceRatio) using Sinon.js for direct method call verification
+- **Hull error handling** — tests degenerate polygon detection and edge cases
+- **MCP layer** — validation error handling, runtime error handling, response formatting
 
-See README.md for test execution instructions.
+See `TESTING.md` for detailed testing conventions and patterns.
+
+### Testing Conventions for Claude
+
+When writing or modifying tests, follow these conventions:
+
+0. **Test code responsibility, not dependencies** — Test your code's behavior (error formatting, control flow), not library behavior (validation rules). See TESTING.md "Test Code Responsibility" section for details and examples.
+1. **Test descriptions start with "should"** — e.g., "should call .clip() with convex hull"
+2. **Group tests by parameter** — one top-level test group per parameter, containing both "provided" and "omitted" cases
+3. **Use Sinon.js for parameter verification** — directly verify d3-voronoi-map method calls rather than inferring from output
+4. **Test edge case boundaries** — for error conditions, test both failure AND success boundary cases (e.g., collinear vertices with zero area vs. valid area)
+
+**Example test structure:**
+```javascript
+test('shape parameter', (t) => {
+  t.test('should call .clip() with convex hull', (t) => {
+    const mockSimulation = createMockSimulation();
+    const factory = sinon.stub().returns(mockSimulation);
+    computeVoronoiMap({ data, shape: [...], seed: 'test' }, factory);
+    t.ok(mockSimulation.clip.calledOnce, '.clip() called once');
+    t.end();
+  });
+
+  t.test('should not call .clip() when shape omitted', (t) => {
+    const mockSimulation = createMockSimulation();
+    const factory = sinon.stub().returns(mockSimulation);
+    computeVoronoiMap({ data, seed: 'test' }, factory);
+    t.notOk(mockSimulation.clip.called, '.clip() not called');
+    t.end();
+  });
+});
+```
+
+See `TESTING.md` for comprehensive testing guidance applicable to all contributors.
 
 ## Future Enhancements
 
