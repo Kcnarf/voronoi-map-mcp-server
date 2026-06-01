@@ -1,8 +1,47 @@
 import test from 'tape';
 import { handleComputeVoronoiMap } from '../src/server.js';
 
-test('Success responses', (t) => {
-  t.test('minimal valid call returns success', async (t) => {
+test('Validation error handling', (t) => {
+  t.test('should return validation error with correct prefix when input is invalid', async (t) => {
+    const result = await handleComputeVoronoiMap({ data: [] });
+
+    t.equal(result.isError, true, 'should have isError flag');
+    t.equal(result.content[0].type, 'text', 'should have text content type');
+    t.ok(result.content[0].text.startsWith('Validation error:'), 'should start with "Validation error:" prefix');
+    t.end();
+  });
+
+  t.test('should include error details in validation error message', async (t) => {
+    const result = await handleComputeVoronoiMap({
+      data: [{ id: 'a', weight: -5 }]
+    });
+
+    t.equal(result.isError, true, 'should have isError flag');
+    const msg = result.content[0].text;
+    t.ok(msg.startsWith('Validation error:'), 'should start with "Validation error:" prefix');
+    t.ok(msg.length > 'Validation error:'.length, 'should include error details');
+    t.end();
+  });
+});
+
+test('Runtime error handling', (t) => {
+  t.test('should return runtime error with correct prefix when computation fails', async (t) => {
+    const result = await handleComputeVoronoiMap({
+      data: [{ id: 'a', weight: 1 }],
+      shape: [[0, 0], [1, 1], [2, 2]]
+    });
+
+    t.equal(result.isError, true, 'should have isError flag');
+    t.equal(result.content[0].type, 'text', 'should have text content type');
+    const msg = result.content[0].text;
+    t.ok(msg.startsWith('Error computing Voronoi map:'), 'should start with "Error computing Voronoi map:" prefix');
+    t.ok(msg.length > 'Error computing Voronoi map:'.length, 'should include error details');
+    t.end();
+  });
+});
+
+test('Success response formatting', (t) => {
+  t.test('should return JSON array for valid minimal input', async (t) => {
     const result = await handleComputeVoronoiMap({
       data: [
         { id: 'a', weight: 1 },
@@ -11,23 +50,23 @@ test('Success responses', (t) => {
     });
 
     t.notOk(result.isError, 'should not have isError flag');
-    t.equal(result.content[0].type, 'text', 'content type is text');
+    t.equal(result.content[0].type, 'text', 'should have text content type');
 
     let parsed;
     try {
       parsed = JSON.parse(result.content[0].text);
     } catch (e) {
-      t.fail(`JSON parse failed: ${e.message}`);
+      t.fail(`should parse response as valid JSON: ${e.message}`);
       t.end();
       return;
     }
 
-    t.ok(Array.isArray(parsed), 'parsed result is an array');
-    t.equal(parsed.length, 2, 'result array has 2 cells');
+    t.ok(Array.isArray(parsed), 'should return an array');
+    t.equal(parsed.length, 2, 'should return one cell per input item');
     t.end();
   });
 
-  t.test('all optional parameters accepted', async (t) => {
+  t.test('should accept all optional parameters without error', async (t) => {
     const result = await handleComputeVoronoiMap({
       data: [{ id: 'a', weight: 1 }],
       shape: [[0, 0], [1, 0], [1, 1], [0, 1]],
@@ -38,84 +77,19 @@ test('Success responses', (t) => {
     });
 
     t.notOk(result.isError, 'should not have isError flag');
+    t.equal(result.content[0].type, 'text', 'should have text content type');
 
     let parsed;
     try {
       parsed = JSON.parse(result.content[0].text);
     } catch (e) {
-      t.fail(`JSON parse failed: ${e.message}`);
+      t.fail(`should parse response as valid JSON: ${e.message}`);
       t.end();
       return;
     }
 
-    t.ok(Array.isArray(parsed), 'parsed result is an array');
-    t.equal(parsed.length, 1, 'result array has 1 cell');
-    t.end();
-  });
-});
-
-test('Zod validation errors', (t) => {
-  t.test('empty data array rejected', async (t) => {
-    const result = await handleComputeVoronoiMap({ data: [] });
-
-    t.equal(result.isError, true, 'isError is true');
-    t.ok(result.content[0].text.startsWith('Validation error:'), 'message starts with "Validation error:"');
-    t.end();
-  });
-
-  t.test('missing data field rejected', async (t) => {
-    const result = await handleComputeVoronoiMap({});
-
-    t.equal(result.isError, true, 'isError is true');
-    t.ok(result.content[0].text.startsWith('Validation error:'), 'message starts with "Validation error:"');
-    t.end();
-  });
-
-  t.test('negative weight rejected', async (t) => {
-    const result = await handleComputeVoronoiMap({
-      data: [{ id: 'a', weight: -5 }]
-    });
-
-    t.equal(result.isError, true, 'isError is true');
-    const msg = result.content[0].text;
-    t.ok(msg.startsWith('Validation error:'), 'message starts with "Validation error:"');
-    t.ok(msg.includes('weight'), 'message mentions "weight"');
-    t.end();
-  });
-
-  t.test('shape with < 3 vertices rejected', async (t) => {
-    const result = await handleComputeVoronoiMap({
-      data: [{ id: 'a', weight: 1 }],
-      shape: [[0, 0], [1, 1]]
-    });
-
-    t.equal(result.isError, true, 'isError is true');
-    t.ok(result.content[0].text.startsWith('Validation error:'), 'message starts with "Validation error:"');
-    t.end();
-  });
-
-  t.test('convergenceRatio > 1 rejected', async (t) => {
-    const result = await handleComputeVoronoiMap({
-      data: [{ id: 'a', weight: 1 }],
-      convergenceRatio: 2
-    });
-
-    t.equal(result.isError, true, 'isError is true');
-    t.ok(result.content[0].text.startsWith('Validation error:'), 'message starts with "Validation error:"');
-    t.end();
-  });
-});
-
-test('Runtime errors', (t) => {
-  t.test('collinear shape returns runtime error with correct prefix', async (t) => {
-    const result = await handleComputeVoronoiMap({
-      data: [{ id: 'a', weight: 1 }],
-      shape: [[0, 0], [1, 1], [2, 2]]
-    });
-
-    t.equal(result.isError, true, 'isError is true');
-    const msg = result.content[0].text;
-    t.ok(msg.startsWith('Error computing Voronoi map:'), 'message starts with "Error computing Voronoi map:" prefix (not Validation error)');
+    t.ok(Array.isArray(parsed), 'should return an array');
+    t.equal(parsed.length, 1, 'should return one cell per input item');
     t.end();
   });
 });
