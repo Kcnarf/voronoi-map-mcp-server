@@ -41,7 +41,7 @@ yarn test               # Run test suite
 
 **Polygon handling** (`src/compute.js`):
 - Computes convex hull via `d3-polygon`'s `polygonHull()` if shape is provided
-- Validates hull has ≥3 non-duplicate points via shoelace formula area check
+- Validates hull has ≥3 non-duplicate points (null or short hull → throws)
 - Only applies `.clip()` to simulation if shape is explicitly provided
 
 **Conditional parameter application**:

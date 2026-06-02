@@ -172,6 +172,17 @@ test('Seed determinism', (t) => {
     t.equal(typeof mockSimulation.prng.firstCall.args[0], 'function', '.prng() called with a PRNG function');
     t.end();
   });
+
+  t.test('should call .prng() with a seeded PRNG function when seed is empty string', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
+
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], seed: '' }, mockSimulationStub);
+
+    t.ok(mockSimulation.prng.calledOnce, '.prng() called once when seed is empty string');
+    t.equal(typeof mockSimulation.prng.firstCall.args[0], 'function', '.prng() called with a PRNG function');
+    t.end();
+  });
 });
 
 test('Execution loop', (t) => {
@@ -185,17 +196,17 @@ test('Execution loop', (t) => {
     t.end();
   });
 
-  t.test('should call .tick() until state().ended is true', (t) => {
+  t.test('should call .tick() multiple times if simulation does not end immediately', (t) => {
     const mockSimulation = createMockSimulation();
     mockSimulation.state = sinon.stub().callsFake(() => ({
-      ended: mockSimulation.state.callCount > 1,
+      ended: mockSimulation.state.callCount > 2,
       polygons: []
     }));
     const mockSimulationStub = sinon.stub().returns(mockSimulation);
 
     computeVoronoiMap({ data: [{ id: 'a', weight: 1 }] }, mockSimulationStub);
 
-    t.ok(mockSimulation.tick.calledOnce, '.tick() called once before simulation ended');
+    t.ok(mockSimulation.tick.calledTwice, '.tick() called twice before simulation ended');
     t.end();
   });
 });
@@ -341,7 +352,7 @@ test('Hull error handling', (t) => {
   });
 
   t.test('should handle collinear vertices', (t) => {
-    t.test('should throw degenerate polygon error for collinear 0-area shape', (t) => {
+    t.test('should throw error for fully collinear shape', (t) => {
       try {
         computeVoronoiMap({
           data: [{ id: 'a', weight: 1 }],
@@ -349,7 +360,7 @@ test('Hull error handling', (t) => {
         });
         t.fail('should have thrown an error');
       } catch (error) {
-        t.ok(error.message.includes('less than 3') || error.message.includes('zero area'), 'error mentions degenerate polygon');
+        t.ok(error.message.includes('less than 3 non-duplicate'), 'error mentions less than 3 non-duplicate points');
         t.end();
       }
     });

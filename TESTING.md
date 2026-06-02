@@ -79,7 +79,7 @@ Use Sinon stubs to directly verify that d3-voronoi-map methods are called with c
 For error conditions, test both the failure case AND the success boundary case.
 
 **Example - Collinear vertices:**
-- ✅ "should throw degenerate polygon error for collinear 0-area shape" (error case)
+- ✅ "should throw error for fully collinear shape" (error case)
 - ✅ "should not throw error if some vertices are collinear but shape still defines valid area" (success boundary)
 
 **Why:** Ensures error checks are precise; prevents false positives; documents what shapes ARE allowed.

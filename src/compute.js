@@ -2,25 +2,11 @@ import { voronoiMapSimulation } from "d3-voronoi-map";
 import { polygonHull } from "d3-polygon";
 import seedrandom from "seedrandom";
 
-// Compute convex hull to ensure clip is convex, hole-free, and counterclockwise
 function computeConvexHull(polygon) {
   const convexhull = polygonHull(polygon);
-  if (convexhull.length < 3) {
+  if (convexhull === null || convexhull.length < 3) {
     throw new Error('Shape defines a degenerated polygon with less than 3 non-duplicate points');
   }
-
-  // Validate that the hull encloses a valid area using shoelace formula
-  let area = 0;
-  for (let i = 0; i < convexhull.length; i++) {
-    const [x1, y1] = convexhull[i];
-    const [x2, y2] = convexhull[(i + 1) % convexhull.length];
-    area += x1 * y2 - x2 * y1;
-  }
-
-  if (area === 0) {
-    throw new Error('Shape defines a degenerate polygon with zero area (e.g., with collinear points)');
-  }
-
   return convexhull;
 }
 
@@ -64,7 +50,7 @@ export function computeVoronoiMap({ shape, data, convergenceRatio, maxIterationC
   // Extract and format results
   const polygons = simulation.state().polygons;
   const result = polygons.map(polygon => ({
-    polygon: polygon.map(([x, y]) => [x, y]),
+    polygon: polygon,
     datum: polygon.site.originalObject.data.originalData
   }));
 
