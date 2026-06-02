@@ -19,5 +19,8 @@
   "devDependencies": {
     "sinon": "^19.0.0",
     "tape": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
