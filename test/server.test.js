@@ -61,8 +61,8 @@ test('Success response formatting', (t) => {
       return;
     }
 
-    t.ok(Array.isArray(parsed), 'should return an array');
-    t.equal(parsed.length, 2, 'should return one cell per input item');
+    t.ok(Array.isArray(parsed.cells), 'should return an array under cells key');
+    t.equal(parsed.cells.length, 2, 'should return one cell per input item');
     t.end();
   });
 
@@ -88,8 +88,8 @@ test('Success response formatting', (t) => {
       return;
     }
 
-    t.ok(Array.isArray(parsed), 'should return an array');
-    t.equal(parsed.length, 1, 'should return one cell per input item');
+    t.ok(Array.isArray(parsed.cells), 'should return an array under cells key');
+    t.equal(parsed.cells.length, 1, 'should return one cell per input item');
     t.end();
   });
 });

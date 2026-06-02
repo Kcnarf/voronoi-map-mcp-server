@@ -26,7 +26,7 @@ The server is a local MCP server, which communicates via stdio.
 
 **Tool**: `compute_voronoi_map`
 - **Input**: `data` (required, array of objects with `id` and `weight`); `shape` (optional, array of [x,y] coordinates); optional tuning parameters (`seed`, `maxIterationCount`, `convergenceRatio`, `minWeightRatio`)
-- **Output**: Array of `{polygon: [[x,y], ...], datum: {...}}` objects representing the tessellation
+- **Output**: Object `{ cells: [{polygon: [[x,y], ...], datum: {...}}, ...] }` representing the tessellation
 - **Behavior**: Optionally computes convex hull of input polygon, runs Voronoi simulation synchronously until convergence, preserves extra fields from input data
 
 ## Common Commands

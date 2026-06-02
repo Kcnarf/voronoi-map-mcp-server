@@ -134,18 +134,20 @@ The tool operates in three steps:
 }
 ```
 
-**Step 2**: The MCP server returns an array of tessellated cells:
+**Step 2**: The MCP server returns an object with a `cells` array:
 ```json
-[
-    {
-        polygon: [[x'0, y'0], [x'1, y'1], ...],
-        datum: { id: "data0", weight: 10, ... }
-    },
-    {
-        polygon: [[x''0, y''0], [x''1, y''1], ...],
-        datum: { id: "data1", weight: 20, ... }
-    }
-]
+{
+    "cells": [
+        {
+            "polygon": [[x'0, y'0], [x'1, y'1], ...],
+            "datum": { "id": "data0", "weight": 10, ... }
+        },
+        {
+            "polygon": [[x''0, y''0], [x''1, y''1], ...],
+            "datum": { "id": "data1", "weight": 20, ... }
+        }
+    ]
+}
 ```
 
 **Step 3**: The calling agent computes and displays the SVG based on the tessellation.
