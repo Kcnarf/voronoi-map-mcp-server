@@ -2,6 +2,13 @@
 
 This document outlines testing conventions for the voronoi-map-mcp-server project. All contributors should follow these patterns when writing or modifying tests.
 
+## Test Stack
+
+- **[Tape](https://github.com/substack/tape)** — test runner and assertions
+- **[Sinon.js](https://sinonjs.org/)** — spies and stubs for parameter verification
+
+Test files live in the `test/` directory. The current suite is in `test/compute.test.js`.
+
 ## Test Description Format
 
 Every test description must start with "should" to clearly state expected behavior.
@@ -65,30 +72,6 @@ test('parameter-name', (t) => {
 
 Use Sinon stubs to directly verify that d3-voronoi-map methods are called with correct parameters. Do not infer parameter passing from output behavior.
 
-**Setup:**
-1. Accept optional `_simulationFactory` parameter in `compute.js` (defaults to real `voronoiMapSimulation`)
-2. In tests, create mock simulation with helper function:
-```javascript
-function createMockSimulation() {
-  return {
-    clip: sinon.stub().returnsThis(),
-    maxIterationCount: sinon.stub().returnsThis(),
-    // ... other methods
-  };
-}
-```
-
-**Usage in tests:**
-```javascript
-const mockSimulation = createMockSimulation();
-const factory = sinon.stub().returns(mockSimulation);
-computeVoronoiMap({ data, shape: [...], seed: 'test' }, factory);
-
-// Assert the method was called with correct value
-t.ok(mockSimulation.clip.calledOnce, '.clip() called once');
-t.ok(mockSimulation.maxIterationCount.calledOnceWithExactly(5), 'called with value 5');
-```
-
 **Why:** Tests the implementation contract explicitly; catches parameter mismatches without relying on behavior inference; enables verification that methods are NOT called when parameters are omitted.
 
 ## Edge Case Testing
@@ -104,11 +87,5 @@ For error conditions, test both the failure case AND the success boundary case.
 ## Running Tests
 
 ```bash
-yarn test          # Run all tests
+yarn test
 ```
-
-Tests use [Tape](https://github.com/substack/tape) for assertions and [Sinon.js](https://sinonjs.org/) for spies/stubs.
-
-## Test Organization Summary
-
-Tests are organized by functionality (e.g., datum extraction, seed determinism, parameter handling, error cases). See `test/compute.test.js` for current organization.

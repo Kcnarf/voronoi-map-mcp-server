@@ -103,7 +103,7 @@ Example: Instead of showing 25 product SKUs individually, group low-revenue item
 
 The `compute_voronoi_map` tool accepts a shape (convex polygon) and weighted data, then computes a Voronoï tesselation where each cell's area is proportional to its corresponding weight.
 
-### Quick Parameter Overview
+### Parameter Reference
 
 #### Required Parameters
 
@@ -126,10 +126,10 @@ The tool operates in three steps:
 **Step 1**: Input data is formatted as a JSON object:
 ```json
 {
-    shape: [[x0,y0], [x1,y1], ...],
-    data: [
-        { id: "data0", weight: 10, ... },
-        { id: "data1", weight: 20, ... }
+    "shape": [[0,0], [100,0], [100,100], [0,100]],
+    "data": [
+        { "id": "data0", "weight": 10 },
+        { "id": "data1", "weight": 20 }
     ]
 }
 ```
@@ -202,21 +202,11 @@ The SVG rendering is intentionally left to the agent, which can handle rendering
 
 ## Testing
 
-The project includes a comprehensive test suite covering the server's computation logic, parameter handling, and error formatting.
-
-### Run tests
 ```bash
 yarn test
 ```
 
-This executes 41 tests organized into functional groups:
-- **Datum extraction** — verifies data preservation through d3 internals
-- **Seed determinism** — ensures reproducible results with seeded PRNG
-- **Parameter application** — validates conditional application of optional parameters (shape, maxIterationCount, minWeightRatio, convergenceRatio)
-- **Hull error handling** — tests degenerate polygon detection
-- **Success responses** — verifies correct MCP response format
-- **Zod validation** — tests input validation and error messages
-- **Runtime errors** — ensures proper error prefixes and formatting
+The test suite covers computation logic, parameter handling, and error formatting.
 
 ## Reference
 

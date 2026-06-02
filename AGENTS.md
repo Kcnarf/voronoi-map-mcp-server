@@ -12,7 +12,7 @@ Guidance for AI coding assistants (Claude Code, Cursor, Copilot, etc.) working o
 
 This is a Model Context Protocol (MCP) server for computing Voronoi maps. It wraps the `d3-voronoi-map` JavaScript library and exposes a single MCP tool that partitions a convex polygon into cells whose areas represent the weights of input data points.
 
-The server communicates via stdio and is intended to run inside Claude Desktop.
+The server is a local MCP server, which communicates via stdio.
 
 ## Architecture
 
@@ -53,10 +53,21 @@ yarn test               # Run test suite
 - Calls `.stop()` to prevent auto-running, then manually iterates with `.tick()`
 - Stops when `state().ended` is true (convergence or maxIterationCount reached)
 
+**Simulation factory / testability seam** (`src/compute.js`):
+- `computeVoronoiMap()` accepts an optional `_simulationFactory` second parameter (defaults to the real `voronoiMapSimulation`)
+- Tests pass a stub factory to intercept simulation method calls without running the full algorithm
+- Never pass this parameter from production code — it exists solely for testing
+
 **Datum extraction** (`src/compute.js`):
 - Extracts original data via `polygon.site.originalObject.data.originalData`
 - Preserves all input fields including passthrough fields (via Zod `.passthrough()`)
 - Weight in datum is original value, not internally clamped value
+
+**Error formatting** (`src/server.js`):
+- Two error categories, each with a distinct prefix in the MCP response text:
+  - Zod validation failure: `"Validation error: <joined messages>"`
+  - Runtime error (e.g. degenerate polygon): `"Error computing Voronoi map: <error.message>"`
+- Both set `isError: true` in the MCP response
 
 ## Testing
 
