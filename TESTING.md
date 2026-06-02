@@ -16,45 +16,31 @@ Every test description must start with "should" to clearly state expected behavi
 
 ## Test Code Responsibility
 
-Test your code's behavior, not your dependencies' behavior. A test should verify the responsibility of the code under test, not the responsibilities of the libraries it uses.
+Only test the behavior of the function under test, not the behavior of functions it calls. Any function your code calls—whether from a library or another part of your codebase—should be assumed to work correctly and should not be tested.
 
-**The Principle:**
-- ✅ Test that **your code** correctly handles errors, formats responses, or passes parameters
-- ❌ Don't test that **your dependencies** (Zod, d3-voronoi-map, etc.) validate input or enforce constraints
+**Why:** Focuses on the responsibility of your function; avoids redundant testing of dependencies; tests remain valid when dependencies change or internal functions are refactored.
 
-**Why:** 
-- **Framework independence** — If you swap Zod for another validation library, tests should still pass as long as error handling is correct
-- **Avoid duplicate testing** — Libraries are already tested by their maintainers; testing their behavior is redundant
-- **Focus on what you control** — Your code's responsibility is error formatting, response structure, and control flow—not validation rules
-- **Resilience to change** — Tests survive refactoring when they verify behavior, not implementation details
+**Example:**
 
-**Examples:**
-
-❌ **Don't test dependency behavior (Zod's job):**
+❌ Tests that Zod validates input (Zod's responsibility):
 ```javascript
 t.test('should reject negative weight', async (t) => {
   const result = await handleComputeVoronoiMap({
     data: [{ id: 'a', weight: -5 }]
   });
-  t.equal(result.isError, true);
-  // This tests Zod's validation rule, not your code's responsibility
+  t.equal(result.isError, true); // Tests Zod, not your function
 });
 ```
 
-✅ **Do test your code's behavior (error handling):**
+✅ Tests that your function formats validation errors correctly (your responsibility):
 ```javascript
 t.test('should format validation errors with "Validation error:" prefix', async (t) => {
-  const result = await handleComputeVoronoiMap({ data: [] }); // any invalid input
-  t.equal(result.isError, true);
+  const result = await handleComputeVoronoiMap({ data: [] });
   t.ok(result.content[0].text.startsWith('Validation error:'));
-  // This tests your code's responsibility: formatting validation errors correctly
 });
 ```
 
-**How to identify violations:**
-- Does the test verify a library's validation rule (minValue, required, array length)?
-- Does the test verify behavior that would remain identical if you swapped the library?
-- If replacing the dependency **would** invalidate the test, the test is probably testing the dependency, not your code
+**How to identify violations:** If you're verifying behavior of a function your code calls, you're testing the dependency, not your code.
 
 ## Test Organization Structure
 
@@ -125,10 +111,4 @@ Tests use [Tape](https://github.com/substack/tape) for assertions and [Sinon.js]
 
 ## Test Organization Summary
 
-Current test groups in `test/compute.test.js`:
-
-1. **Datum extraction** — Verify data preservation through simulation
-2. **Seed determinism** — Verify reproducibility with seeds
-3. **Parameter tests** — One group per parameter (shape, seed, maxIterationCount, minWeightRatio, convergenceRatio)
-4. **Hull error handling** — Validate polygon degeneration detection
-5. **Integration tests** — MCP responses, validation, error formatting
+Tests are organized by functionality (e.g., datum extraction, seed determinism, parameter handling, error cases). See `test/compute.test.js` for current organization.

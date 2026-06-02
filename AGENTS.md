@@ -34,7 +34,7 @@ The server communicates via stdio and is intended to run inside Claude Desktop.
 ```bash
 yarn install            # Install dependencies
 yarn start              # Run the MCP server on stdio
-yarn test               # Run test suite (49 tests, organized by functionality)
+yarn test               # Run test suite
 ```
 
 ## Implementation Details
@@ -60,51 +60,4 @@ yarn test               # Run test suite (49 tests, organized by functionality)
 
 ## Testing
 
-The project includes 49 regression tests organized by functionality:
-- **Datum extraction** — verifies data preservation through d3 internals
-- **Seed determinism** — ensures reproducible results with seedrandom
-- **Parameter tests** — validates each optional parameter (seed, shape, maxIterationCount, minWeightRatio, convergenceRatio) using Sinon.js for direct method call verification
-- **Hull error handling** — tests degenerate polygon detection and edge cases
-- **MCP layer** — validation error handling, runtime error handling, response formatting
-
-See `TESTING.md` for detailed testing conventions and patterns.
-
-## Testing Conventions
-
-When writing or modifying tests, follow these conventions:
-
-0. **Test code responsibility, not dependencies** — Test your code's behavior (error formatting, control flow), not library behavior (validation rules). See TESTING.md "Test Code Responsibility" section for details and examples.
-1. **Test descriptions start with "should"** — e.g., "should call .clip() with convex hull"
-2. **Group tests by parameter** — one top-level test group per parameter, containing both "provided" and "omitted" cases
-3. **Use Sinon.js for parameter verification** — directly verify d3-voronoi-map method calls rather than inferring from output
-4. **Test edge case boundaries** — for error conditions, test both failure AND success boundary cases (e.g., collinear vertices with zero area vs. valid area)
-
-**Example test structure:**
-```javascript
-test('shape parameter', (t) => {
-  t.test('should call .clip() with convex hull', (t) => {
-    const mockSimulation = createMockSimulation();
-    const factory = sinon.stub().returns(mockSimulation);
-    computeVoronoiMap({ data, shape: [...], seed: 'test' }, factory);
-    t.ok(mockSimulation.clip.calledOnce, '.clip() called once');
-    t.end();
-  });
-
-  t.test('should not call .clip() when shape omitted', (t) => {
-    const mockSimulation = createMockSimulation();
-    const factory = sinon.stub().returns(mockSimulation);
-    computeVoronoiMap({ data, seed: 'test' }, factory);
-    t.notOk(mockSimulation.clip.called, '.clip() not called');
-    t.end();
-  });
-});
-```
-
-See `TESTING.md` for comprehensive testing guidance applicable to all contributors.
-
-## Future Enhancements
-
-- ✅ Seeded random number generation for reproducibility (already implemented via `seed` parameter)
-- ✅ Simulation tuning parameters (already implemented: `convergenceRatio`, `maxIterationCount`, `minWeightRatio`)
-- ⚠️ Convergence metadata to response (iterationCount, final convergenceRatio achieved)
-- ⚠️ Input validation for convexity checks (currently only errors on degenerate shapes)
+The project includes a comprehensive test suite. See `TESTING.md` for detailed testing conventions, organization, and guidance for all contributors.
