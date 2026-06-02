@@ -206,7 +206,7 @@ The SVG rendering is intentionally left to the agent, which can handle rendering
 yarn test
 ```
 
-The test suite covers computation logic, parameter handling, and error formatting.
+The test suite covers computation logic, parameter handling, and error formatting. More testing conventions and details in the [TESTING.md](./TESTING.md) file.
 
 ## Reference
 
