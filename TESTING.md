@@ -7,7 +7,7 @@ This document outlines testing conventions for the voronoi-map-mcp-server projec
 - **[Tape](https://github.com/substack/tape)** — test runner and assertions
 - **[Sinon.js](https://sinonjs.org/)** — spies and stubs for parameter verification
 
-Test files live in the `test/` directory. The current suite is in `test/compute.test.js`.
+Test files live in the `test/` directory: `test/compute.test.js` and `test/server.test.js`.
 
 ## Test Description Format
 

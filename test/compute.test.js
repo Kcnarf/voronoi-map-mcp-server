@@ -11,6 +11,7 @@ function createMockSimulation() {
     minWeightRatio: sinon.stub().returnsThis(),
     prng: sinon.stub().returnsThis(),
     stop: sinon.stub().returnsThis(),
+    tick: sinon.stub(),
     state: sinon.stub().returns({
       ended: true,
       polygons: []
@@ -29,6 +30,7 @@ test('Datum extraction', (t) => {
       seed: 'test'
     });
 
+    t.equal(result.length, inputData.length, 'result length matches input length');
     for (let i = 0; i < result.length; i++) {
       const cell = result[i];
       const matchingInput = inputData.find(d => d.id === cell.datum.id);
@@ -70,6 +72,25 @@ test('Datum extraction', (t) => {
     const smallCell = result.find(cell => cell.datum.id === 'small');
     t.ok(smallCell, 'found small cell');
     t.equal(smallCell.datum.weight, 1, 'weight is original value 1, not clamped');
+    t.end();
+  });
+});
+
+test('Output shape', (t) => {
+  t.test('should return polygon as non-empty array of [x,y] coordinate pairs', (t) => {
+    const result = computeVoronoiMap({
+      data: [{ id: 'a', weight: 1 }, { id: 'b', weight: 2 }],
+      seed: 'test'
+    });
+
+    for (const cell of result) {
+      t.ok(Array.isArray(cell.polygon), 'polygon is an array');
+      t.ok(cell.polygon.length > 0, 'polygon has at least one vertex');
+      t.ok(
+        cell.polygon.every(p => Array.isArray(p) && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number'),
+        'all polygon vertices are [x,y] number pairs'
+      );
+    }
     t.end();
   });
 });
@@ -138,6 +159,43 @@ test('Seed determinism', (t) => {
     t.notOk(mockSimulation.prng.called,
       '.prng() not called when seed parameter omitted');
 
+    t.end();
+  });
+
+  t.test('should call .prng() with a seeded PRNG function when seed provided', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
+
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }], seed: 'test-seed' }, mockSimulationStub);
+
+    t.ok(mockSimulation.prng.calledOnce, '.prng() called once when seed provided');
+    t.equal(typeof mockSimulation.prng.firstCall.args[0], 'function', '.prng() called with a PRNG function');
+    t.end();
+  });
+});
+
+test('Execution loop', (t) => {
+  t.test('should call .stop() to prevent auto-run', (t) => {
+    const mockSimulation = createMockSimulation();
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
+
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }] }, mockSimulationStub);
+
+    t.ok(mockSimulation.stop.calledOnce, '.stop() called once');
+    t.end();
+  });
+
+  t.test('should call .tick() until state().ended is true', (t) => {
+    const mockSimulation = createMockSimulation();
+    mockSimulation.state = sinon.stub().callsFake(() => ({
+      ended: mockSimulation.state.callCount > 1,
+      polygons: []
+    }));
+    const mockSimulationStub = sinon.stub().returns(mockSimulation);
+
+    computeVoronoiMap({ data: [{ id: 'a', weight: 1 }] }, mockSimulationStub);
+
+    t.ok(mockSimulation.tick.calledOnce, '.tick() called once before simulation ended');
     t.end();
   });
 });
@@ -252,7 +310,7 @@ test('convergenceRatio parameter', (t) => {
 });
 
 test('Hull error handling', (t) => {
-  t.test('Should handle duplicated points', (t) => {
+  t.test('should handle duplicated points', (t) => {
     t.test('should throw error if duplicate-free polygon has <3 points', (t) => {
       try {
         computeVoronoiMap({
@@ -282,7 +340,7 @@ test('Hull error handling', (t) => {
     });
   });
 
-  t.test('Should handle collinear vertices', (t) => {
+  t.test('should handle collinear vertices', (t) => {
     t.test('should throw degenerate polygon error for collinear 0-area shape', (t) => {
       try {
         computeVoronoiMap({
