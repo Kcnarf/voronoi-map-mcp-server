@@ -134,16 +134,22 @@ The tool operates in three steps:
 }
 ```
 
-**Step 2**: The MCP server returns an object with a `cells` array:
+**Step 2**: The MCP server returns an object with a `cells` array. Each cell contains:
+- **`polygon`** — Array of [x, y] vertices defining the cell boundary
+- **`site`** — The [x, y] coordinate of the cell's site (ideal for label placement)
+- **`datum`** — Original input data object with all properties preserved
+
 ```json
 {
     "cells": [
         {
             "polygon": [[x'0, y'0], [x'1, y'1], ...],
+            "site": [x'_site, y'_site],
             "datum": { "id": "data0", "weight": 10, ... }
         },
         {
             "polygon": [[x''0, y''0], [x''1, y''1], ...],
+            "site": [x''_site, y''_site],
             "datum": { "id": "data1", "weight": 20, ... }
         }
     ]

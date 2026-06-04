@@ -51,6 +51,7 @@ export function computeVoronoiMap({ shape, data, convergenceRatio, maxIterationC
   const polygons = simulation.state().polygons;
   const result = polygons.map(polygon => ({
     polygon: polygon,
+    site: [polygon.site.x, polygon.site.y],
     datum: polygon.site.originalObject.data.originalData
   }));
 

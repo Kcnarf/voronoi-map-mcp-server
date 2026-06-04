@@ -96,7 +96,7 @@ test('Output shape', (t) => {
 });
 
 test('Cell output structure', (t) => {
-  t.test('should return each cell with polygon, datum fields', (t) => {
+  t.test('should return each cell with polygon, site, and datum fields', (t) => {
     const inputData = [
       { id: 'alpha', weight: 30 },
       { id: 'beta', weight: 70 }
@@ -110,6 +110,7 @@ test('Cell output structure', (t) => {
 
     for (const cell of result) {
       t.ok(cell.hasOwnProperty('polygon'), 'cell has polygon field');
+      t.ok(cell.hasOwnProperty('site'), 'cell has site field');
       t.ok(cell.hasOwnProperty('datum'), 'cell has datum field');
     }
     t.end();
@@ -180,6 +181,51 @@ test('Cell output structure', (t) => {
     }
     t.end();
   });
+
+  t.test('should include a `site` field in each cell', (t) => {
+    const result = computeVoronoiMap({
+      data: [
+        { id: 'a', weight: 1 },
+        { id: 'b', weight: 2 }
+      ],
+      seed: 'test'
+    });
+
+    t.equal(result.length, 2, 'result has 2 cells');
+
+    for (let i = 0; i < result.length; i++) {
+      const cell = result[i];
+      t.ok(cell.hasOwnProperty('site'), `cell ${i} has site field`);
+    }
+    t.end();
+  });
+
+  t.test('should format `site` as [x, y] array with exactly 2 number elements', (t) => {
+    const result = computeVoronoiMap({
+      data: [
+        { id: 'a', weight: 10 },
+        { id: 'b', weight: 5 },
+        { id: 'c', weight: 20 }
+      ],
+      seed: 'test'
+    });
+
+    for (let i = 0; i < result.length; i++) {
+      const cell = result[i];
+      const site = cell.site;
+
+      t.ok(Array.isArray(site), `cell ${i} site is an array`);
+      t.equal(site.length, 2, `cell ${i} site has exactly 2 elements`);
+      t.equal(typeof site[0], 'number', `cell ${i} site[0] (x) is a number`);
+      t.equal(typeof site[1], 'number', `cell ${i} site[1] (y) is a number`);
+      t.notOk(isNaN(site[0]), `cell ${i} site[0] (x) is not NaN`);
+      t.notOk(isNaN(site[1]), `cell ${i} site[1] (y) is not NaN`);
+      t.notOk(!isFinite(site[0]), `cell ${i} site[0] (x) is finite`);
+      t.notOk(!isFinite(site[1]), `cell ${i} site[1] (y) is finite`);
+    }
+    t.end();
+  });
+
 });
 
 test('Seed determinism', (t) => {

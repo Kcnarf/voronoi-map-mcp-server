@@ -26,8 +26,8 @@ The server is a local MCP server, which communicates via stdio.
 
 **Tool**: `compute_voronoi_map`
 - **Input**: `data` (required, array of objects with `id` and `weight`); `shape` (optional, array of [x,y] coordinates); optional tuning parameters (`seed`, `maxIterationCount`, `convergenceRatio`, `minWeightRatio`)
-- **Output**: Object `{ cells: [{polygon: [[x,y], ...], datum: {...}}, ...] }` representing the tessellation
-- **Behavior**: Optionally computes convex hull of input polygon, runs Voronoi simulation synchronously until convergence, preserves extra fields from input data
+- **Output**: Object `{ cells: [{polygon: [[x,y], ...], site: [x,y], datum: {...}}, ...] }` representing the tessellation. Each cell includes the polygon boundary vertices, the site coordinate (ideal for label placement), and the original input datum with all properties preserved
+- **Behavior**: Optionally computes convex hull of input polygon, runs Voronoi simulation synchronously until convergence, extracts site coordinates from converged polygon, preserves extra fields from input data
 
 ## Common Commands
 
@@ -58,10 +58,12 @@ yarn test               # Run test suite
 - Tests pass a stub factory to intercept simulation method calls without running the full algorithm
 - Never pass this parameter from production code — it exists solely for testing
 
-**Datum extraction** (`src/compute.js`):
+**Datum and site extraction** (`src/compute.js`):
 - Extracts original data via `polygon.site.originalObject.data.originalData`
+- Extracts site coordinates via `polygon.site.x` and `polygon.site.y` (from d3-voronoi-map's Lloyd relaxation)
 - Preserves all input fields including passthrough fields (via Zod `.passthrough()`)
 - Weight in datum is original value, not internally clamped value
+- Site coordinate equals the geometric centroid of the polygon at convergence (since Lloyd relaxation repositions the site to the cell center)
 
 **Error formatting** (`src/server.js`):
 - Two error categories, each with a distinct prefix in the MCP response text:
