@@ -9,6 +9,34 @@ This document outlines testing conventions for the voronoi-map-mcp-server projec
 
 Test files live in the `test/` directory: `test/compute.test.js` and `test/server.test.js`.
 
+## Scope: For now, Unit Tests Only
+
+This project currently focuses on **unit testing**. Integration tests are not part of the current strategy, but this may evolve as the project grows or deployment patterns change.
+
+**Rationale:** The MCP server is a thin wrapper around the stable, battle-tested d3-voronoi-map library. Unit tests provide sufficient regression protection for the wrapper layer. If the project grows in complexity or integration concerns arise, integration testing can be revisited.
+
+**If integration tests are ever added:** They would live in `test/integration.test.js` and follow the patterns defined at the end of this document.
+
+## Unit Tests: Code Responsibility
+
+Unit tests focus exclusively on your code's behavior, not on the behavior of functions it calls.
+
+**Core principle:** Only test the behavior of the function under test. Any function your code calls—whether from a library or another part of your codebase—should be assumed to work correctly and should not be tested.
+
+**Why:** Focuses on the responsibility of your function; avoids redundant testing of dependencies; tests remain valid when dependencies change or internal functions are refactored.
+
+**Good examples:**
+- Test that you called .clip() with correct parameters ✅ (your responsibility: passing correct args)
+- Test that you extracted and formatted data correctly ✅ (your responsibility: extraction logic)
+- Test that you correctly parsed the API response and mapped it to your data structure ✅ (your responsibility: parsing/mapping)
+
+**Bad examples:**
+- Test that .clip() computed correct coordinates ❌ (d3's responsibility)
+- Test that extracted data is mathematically correct ❌ (source's responsibility)
+- Test that the JSON library correctly parses JSON ❌ (library's responsibility)
+
+**The key question:** Before writing any test, ask: "Who is responsible for this behavior — my code, or a dependency?" If the answer is a dependency, don't test it.
+
 ## Test Description Format
 
 Every test description must start with "should" to clearly state expected behavior.
@@ -20,34 +48,6 @@ Every test description must start with "should" to clearly state expected behavi
 - ❌ "clip is called with convex hull"
 
 **Why:** Creates consistent, behavior-focused documentation; makes expected behavior immediately clear.
-
-## Test Code Responsibility
-
-Only test the behavior of the function under test, not the behavior of functions it calls. Any function your code calls—whether from a library or another part of your codebase—should be assumed to work correctly and should not be tested.
-
-**Why:** Focuses on the responsibility of your function; avoids redundant testing of dependencies; tests remain valid when dependencies change or internal functions are refactored.
-
-**Example:**
-
-❌ Tests that Zod validates input (Zod's responsibility):
-```javascript
-t.test('should reject negative weight', async (t) => {
-  const result = await handleComputeVoronoiMap({
-    data: [{ id: 'a', weight: -5 }]
-  });
-  t.equal(result.isError, true); // Tests Zod, not your function
-});
-```
-
-✅ Tests that your function formats validation errors correctly (your responsibility):
-```javascript
-t.test('should format validation errors with "Validation error:" prefix', async (t) => {
-  const result = await handleComputeVoronoiMap({ data: [] });
-  t.ok(result.content[0].text.startsWith('Validation error:'));
-});
-```
-
-**How to identify violations:** If you're verifying behavior of a function your code calls, you're testing the dependency, not your code.
 
 ## Test Organization Structure
 
