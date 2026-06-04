@@ -95,6 +95,93 @@ test('Output shape', (t) => {
   });
 });
 
+test('Cell output structure', (t) => {
+  t.test('should return each cell with polygon, datum fields', (t) => {
+    const inputData = [
+      { id: 'alpha', weight: 30 },
+      { id: 'beta', weight: 70 }
+    ];
+    const result = computeVoronoiMap({
+      data: inputData,
+      seed: 'test'
+    });
+
+    t.equal(result.length, inputData.length, 'result has one cell per input item');
+
+    for (const cell of result) {
+      t.ok(cell.hasOwnProperty('polygon'), 'cell has polygon field');
+      t.ok(cell.hasOwnProperty('datum'), 'cell has datum field');
+    }
+    t.end();
+  });
+
+  t.test('should preserve complete datum with id, weight, and custom fields', (t) => {
+    const inputData = [
+      { id: 'item-1', weight: 50, label: 'First', color: '#FF0000', count: 42 }
+    ];
+    const result = computeVoronoiMap({
+      data: inputData,
+      seed: 'test'
+    });
+
+    const cell = result[0];
+    t.equal(cell.datum.id, 'item-1', 'datum preserves id');
+    t.equal(cell.datum.weight, 50, 'datum preserves weight');
+    t.equal(cell.datum.label, 'First', 'datum preserves custom label field');
+    t.equal(cell.datum.color, '#FF0000', 'datum preserves custom color field');
+    t.equal(cell.datum.count, 42, 'datum preserves custom count field');
+    t.end();
+  });
+
+  t.test('should correctly match each cell datum to input data', (t) => {
+    const inputData = [
+      { id: 'a', weight: 10 },
+      { id: 'b', weight: 20 },
+      { id: 'c', weight: 30 }
+    ];
+    const result = computeVoronoiMap({
+      data: inputData,
+      seed: 'test'
+    });
+
+    t.equal(result.length, 3, 'result has 3 cells');
+
+    for (let i = 0; i < result.length; i++) {
+      const cell = result[i];
+      const matchingInput = inputData.find(d => d.id === cell.datum.id);
+      t.ok(matchingInput, `cell ${i} has matching input by id`);
+      t.equal(cell.datum.id, matchingInput.id, `cell ${i} datum id matches`);
+      t.equal(cell.datum.weight, matchingInput.weight, `cell ${i} datum weight matches`);
+    }
+    t.end();
+  });
+
+  t.test('should have polygon as array of [x,y] coordinate pairs', (t) => {
+    const result = computeVoronoiMap({
+      data: [
+        { id: 'a', weight: 1 },
+        { id: 'b', weight: 2 }
+      ],
+      seed: 'test'
+    });
+
+    for (const cell of result) {
+      t.ok(Array.isArray(cell.polygon), 'polygon is an array');
+      t.ok(cell.polygon.length > 0, 'polygon has at least one vertex');
+      const allValidCoords = cell.polygon.every(p =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        typeof p[0] === 'number' &&
+        typeof p[1] === 'number' &&
+        !isNaN(p[0]) &&
+        !isNaN(p[1])
+      );
+      t.ok(allValidCoords, 'all polygon vertices are valid [x,y] number pairs');
+    }
+    t.end();
+  });
+});
+
 test('Seed determinism', (t) => {
   t.test('should produce identical output across multiple calls with same seed', (t) => {
     const args = {
