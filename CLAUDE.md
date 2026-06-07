@@ -6,6 +6,10 @@ For general project information, architecture, working guidelines, and testing c
 
 See **README.md** for Claude Desktop setup and integration instructions.
 
-## Claude Code Workflow
+## Workflow & Claude Code-Human Interaction Interaction Guidelines
 
-The working guidelines in **AGENTS.md** apply. For the planning steps, use `EnterPlanMode` to create and present implementation plans.
+The Workflow & Agent-Human Interaction Guidelines in **AGENTS.md** apply.
+
+For the Initialization Check question, present it in a user-freindly selectable manner.
+
+For the planning steps, use `EnterPlanMode` to create and present implementation plans.
