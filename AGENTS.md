@@ -34,7 +34,7 @@ The server is a local MCP server, which communicates via stdio.
 
 ## Architecture
 
-**Language**: JavaScript (Node.js)  
+**Language**: JavaScript (Node.js 18 or 20)  
 **Module system**: ESM  
 
 **Source files**:

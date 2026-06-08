@@ -221,10 +221,13 @@ The test suite covers computation logic, parameter handling, and error formattin
 Contributions, issues, and feature requests are welcome! 
 Whether you are coding entirely by hand or orchestrating an AI assistant (Claude, Cursor, Copilot...), please read our [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a Pull Request.
 
+## Versioning
+
+This project attempts to follow [semantic versioning](https://semver.org). The major version is bumped only when backwards-incompatible changes are released. This helps ensure that users can safely upgrade to patch and minor versions without breaking their integrations.
+
 ## Reference
 
 - based on [Computing Voronoï Treemaps - Faster, Simpler, and Resolution-independent ](https://www.uni-konstanz.de/mmsp/pubsys/publishedFiles/NoBr12a.pdf)
-- [https://github.com/ArlindNocaj/power-voronoi-diagram](https://github.com/ArlindNocaj/power-voronoi-diagram) for a Java implementation
 
 ## License
 
