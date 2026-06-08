@@ -216,7 +216,16 @@ yarn test
 
 The test suite covers computation logic, parameter handling, and error formatting. More testing conventions and details in the [TESTING.md](./TESTING.md) file.
 
+## Contributing
+
+Contributions, issues, and feature requests are welcome! 
+Whether you are coding entirely by hand or orchestrating an AI assistant (Claude, Cursor, Copilot...), please read our [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a Pull Request.
+
 ## Reference
 
 - based on [Computing Voronoï Treemaps - Faster, Simpler, and Resolution-independent ](https://www.uni-konstanz.de/mmsp/pubsys/publishedFiles/NoBr12a.pdf)
 - [https://github.com/ArlindNocaj/power-voronoi-diagram](https://github.com/ArlindNocaj/power-voronoi-diagram) for a Java implementation
+
+## License
+
+This project is licensed under the **BSD 3-Clause License**. See the [LICENSE](LICENSE) file for details.
