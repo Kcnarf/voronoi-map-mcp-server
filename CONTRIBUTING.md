@@ -69,7 +69,7 @@ Use a short (~50 character) title followed by a blank line and additional detail
 ### Title Format
 
 Optionally prefix the title with a category tag for non-feature changes:
-- `[docs]` — Documentation updates
+- `[doc]` — Documentation updates
 - `[fix]` — Bug fixes
 - `[QA]` — Test and quality assurance updates
 - `[CI]` — CI integration and workflow updates
@@ -82,26 +82,23 @@ Include the issue number for traceability, especially for bug fixes: `[fix] bug_
 
 **Feature (no prefix):**
 ```
-Add site coordinates to cell output for label placement
+Add pagination support to the list endpoint
 
-This allows clients to position labels at the cell centroid
-without needing to compute polygon centers themselves.
+This allows clients to retrieve large result sets incrementally without loading all records in a single response.
 ```
 
 **Bug fix (with prefix and issue number):**
 ```
-[fix] resolve polygon validation crash on degenerate shapes (#42)
+[fix] resolve crash when filter value is an empty string (#42)
 
-Add bounds checking before computing convex hull to prevent
-TypeError when input polygon has fewer than 3 unique points.
+Add null-check before passing filter to the query builder to prevent TypeError when the user submits an empty search input.
 ```
 
 **Documentation update (with prefix):**
 ```
-[docs] strengthen CONTRIBUTING.md with comprehensive contributor guidance
+[doc] strengthen CONTRIBUTING.md with comprehensive contributor guidance
 
-Add missing sections for issue reporting, help channels, and PR process
-to improve the contributor experience.
+Add missing sections for issue reporting, help channels, and PR process to improve the contributor experience.
 ```
 
 ## Versioning
